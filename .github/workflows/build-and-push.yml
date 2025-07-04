@@ -1,0 +1,44 @@
+name: Build & Push Slim Clang to calang-clang
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout builder repo
+      uses: actions/checkout@v3
+
+    - name: Install dependencies
+      run: sudo apt-get update && sudo apt-get install -y unzip
+
+    - name: Download Android NDK
+      run: |
+        wget https://dl.google.com/android/repository/android-ndk-r25c-linux.zip
+        unzip -q android-ndk-r25c-linux.zip
+        mv android-ndk-r25c/toolchains/llvm/prebuilt/linux-x86_64 clang
+
+    - name: Run slim script
+      run: |
+        chmod +x build.sh
+        ./build.sh
+
+    - name: Push to ekqiplur/calang-clang
+      env:
+        TARGET_REPO: github.com/ekqiplur/calang-clang.git
+        GITHUB_TOKEN: ${{ secrets.PERSONAL_TOKEN }}
+      run: |
+        git config --global user.email "actions@github.com"
+        git config --global user.name "GitHub Actions"
+
+        git clone --depth=1 https://${GITHUB_TOKEN}@${TARGET_REPO} output-repo
+        rm -rf output-repo/*
+        cp -r slim-clang/* output-repo/
+        cd output-repo
+        git add .
+        git commit -m "Auto push slim clang build"
+        git push origin main --force
